@@ -1,5 +1,6 @@
 import { Header } from "@/components/header"
 import { ClientCalendarWrapper } from "@/components/client-calendar-wrapper"
+import { PdfExportButton } from "@/components/pdf-export-button"
 
 export default function Home() {
   return (
