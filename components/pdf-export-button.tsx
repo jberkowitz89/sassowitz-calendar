@@ -36,42 +36,35 @@ export function PdfExportButton() {
       // Create a clone of the calendar to apply print-specific styles
       const calendarClone = calendarElement.cloneNode(true) as HTMLElement
 
-      // Create a temporary container for our optimized calendar
-      const tempContainer = document.createElement("div")
-      tempContainer.style.position = "absolute"
-      tempContainer.style.left = "-9999px"
-      tempContainer.style.top = "-9999px"
-      document.body.appendChild(tempContainer)
-
-      // Apply minimal styling to make it fit on one page
-      simplifyForPdf(calendarClone)
+      // Apply print-specific styles to the clone
+      applyPrintStyles(calendarClone)
 
       // Configure PDF options for optimal calendar fit
       const opt = {
-        margin: 10,
+        margin: 5, // Use a single number for all margins (in mm)
         filename: `sassowitz-calendar-${new Date().toISOString().split("T")[0]}.pdf`,
         image: { type: "jpeg", quality: 0.98 },
         html2canvas: {
-          scale: 1,
+          scale: 1.5, // Adjust scale for better quality while maintaining fit
           useCORS: true,
           logging: false,
           letterRendering: true,
-          allowTaint: true,
-          windowWidth: 1200,
+          // Set a specific width that works well for most calendars
+          width: 1240,
         },
         jsPDF: {
           unit: "mm",
           format: "a4",
           orientation: "landscape" as "landscape" | "portrait",
           compress: true,
+          // Avoid page breaks inside the calendar
+          putOnlyUsedFonts: true,
         },
+        pagebreak: { mode: "avoid-all" },
       }
 
       // Generate and download the PDF
       await html2pdf().from(calendarClone).set(opt).save()
-
-      // Clean up the temporary container
-      document.body.removeChild(tempContainer)
 
       toast({
         title: "PDF exported successfully",
@@ -89,14 +82,47 @@ export function PdfExportButton() {
     }
   }
 
-  // Function to simplify the calendar for PDF export
-  const simplifyForPdf = (element: HTMLElement) => {
-    // Add a class for print-specific CSS
+  // Function to apply print-specific styles to the calendar clone
+  const applyPrintStyles = (element: HTMLElement) => {
+    // Add a class to the clone for print-specific CSS
     element.classList.add("pdf-export")
 
+    // Find all elements that might cause overflow and adjust them
+    const cells = element.querySelectorAll(".calendar-cell, td, th")
+    cells.forEach((cell) => {
+      if (cell instanceof HTMLElement) {
+        cell.style.padding = "4px"
+        cell.style.fontSize = "12px"
+      }
+    })
+
+    // Remove any unnecessary elements that take up space
+    const nonEssentialElements = element.querySelectorAll(".non-essential, .hidden-in-print")
+    nonEssentialElements.forEach((el) => el.remove())
+
+    // Set a fixed width for the calendar to ensure proper scaling
+    element.style.width = "1240px"
+    element.style.maxWidth = "100%"
+    element.style.margin = "0"
+    element.style.padding = "0"
+
+    // Ensure text doesn't overflow
+    const textElements = element.querySelectorAll("p, span, div, h1, h2, h3, h4, h5, h6")
+    textElements.forEach((el) => {
+      if (el instanceof HTMLElement) {
+        el.style.overflow = "hidden"
+        el.style.textOverflow = "ellipsis"
+        el.style.whiteSpace = "nowrap"
+      }
+    })
+
     // Remove buttons and interactive elements
-    const buttons = element.querySelectorAll("button, [role='button']")
-    buttons.forEach((btn) => btn.remove())
+    const buttons = element.querySelectorAll('button, [role="button"]')
+    buttons.forEach((btn) => {
+      if (btn instanceof HTMLElement) {
+        btn.remove()
+      }
+    })
 
     // Remove "Add Event" text and related elements
     const addEventElements = Array.from(element.querySelectorAll("*")).filter(
@@ -107,38 +133,6 @@ export function PdfExportButton() {
         el.textContent?.includes("No events for this month yet"),
     )
     addEventElements.forEach((el) => el.remove())
-
-    // Apply basic styling to ensure it fits on one page
-    element.style.width = "1100px"
-    element.style.maxWidth = "1100px"
-    element.style.fontSize = "12px"
-    element.style.margin = "0"
-    element.style.padding = "10px"
-    element.style.boxSizing = "border-box"
-    element.style.pageBreakInside = "avoid"
-    element.style.breakInside = "avoid"
-
-    // Find all tables and ensure they fit
-    const tables = element.querySelectorAll("table")
-    tables.forEach((table) => {
-      if (table instanceof HTMLElement) {
-        table.style.width = "100%"
-        table.style.tableLayout = "fixed"
-        table.style.borderCollapse = "collapse"
-      }
-    })
-
-    // Find all cells and reduce padding
-    const cells = element.querySelectorAll("td, th")
-    cells.forEach((cell) => {
-      if (cell instanceof HTMLElement) {
-        cell.style.padding = "4px"
-        cell.style.fontSize = "12px"
-      }
-    })
-
-    // Log the simplified element for debugging
-    console.log("Simplified calendar for PDF:", element)
   }
 
   // Don't render anything on the server
