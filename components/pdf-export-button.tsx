@@ -43,33 +43,8 @@ export function PdfExportButton() {
       tempContainer.style.top = "-9999px"
       document.body.appendChild(tempContainer)
 
-      // Create a clean container for the PDF content
-      const pdfContainer = document.createElement("div")
-      pdfContainer.style.width = "1100px"
-      pdfContainer.style.backgroundColor = "white"
-      pdfContainer.style.padding = "20px"
-      pdfContainer.style.fontFamily = "Arial, sans-serif"
-      tempContainer.appendChild(pdfContainer)
-
-      // Add a title
-      const title = document.createElement("h1")
-      title.textContent = "Calendar - May 2025"
-      title.style.textAlign = "center"
-      title.style.fontSize = "24px"
-      title.style.marginBottom = "15px"
-      title.style.fontWeight = "bold"
-      title.style.color = "#333"
-      pdfContainer.appendChild(title)
-
-      // Extract and clean up the calendar grid
-      const calendarGrid = extractCalendarGrid(calendarClone)
-      if (calendarGrid) {
-        pdfContainer.appendChild(calendarGrid)
-      } else {
-        // If we couldn't extract the grid, use the whole calendar but clean it
-        cleanupCalendar(calendarClone)
-        pdfContainer.appendChild(calendarClone)
-      }
+      // Apply minimal styling to make it fit on one page
+      simplifyForPdf(calendarClone)
 
       // Configure PDF options for optimal calendar fit
       const opt = {
@@ -82,6 +57,7 @@ export function PdfExportButton() {
           logging: false,
           letterRendering: true,
           allowTaint: true,
+          windowWidth: 1200,
         },
         jsPDF: {
           unit: "mm",
@@ -92,7 +68,7 @@ export function PdfExportButton() {
       }
 
       // Generate and download the PDF
-      await html2pdf().from(pdfContainer).set(opt).save()
+      await html2pdf().from(calendarClone).set(opt).save()
 
       // Clean up the temporary container
       document.body.removeChild(tempContainer)
@@ -113,138 +89,56 @@ export function PdfExportButton() {
     }
   }
 
-  // Function to extract just the calendar grid
-  const extractCalendarGrid = (element: HTMLElement): HTMLElement | null => {
-    // Try to find the calendar table or grid
-    const table = element.querySelector("table")
-    if (table) {
-      const tableClone = table.cloneNode(true) as HTMLElement
-      styleCalendarTable(tableClone)
-      return tableClone
-    }
+  // Function to simplify the calendar for PDF export
+  const simplifyForPdf = (element: HTMLElement) => {
+    // Add a class for print-specific CSS
+    element.classList.add("pdf-export")
 
-    // If no table, look for grid elements
-    const grid = element.querySelector(".calendar-grid, [class*='calendar-grid'], [class*='calendarGrid']")
-    if (grid) {
-      const gridClone = grid.cloneNode(true) as HTMLElement
-      styleCalendarGrid(gridClone)
-      return gridClone
-    }
+    // Remove buttons and interactive elements
+    const buttons = element.querySelectorAll("button, [role='button']")
+    buttons.forEach((btn) => btn.remove())
 
-    return null
-  }
-
-  // Function to style a calendar table
-  const styleCalendarTable = (table: HTMLElement) => {
-    table.style.width = "100%"
-    table.style.borderCollapse = "collapse"
-    table.style.tableLayout = "fixed"
-    table.style.marginBottom = "20px"
-
-    // Style table headers (days of week)
-    const headers = table.querySelectorAll("th")
-    headers.forEach((header) => {
-      if (header instanceof HTMLElement) {
-        header.style.padding = "8px"
-        header.style.backgroundColor = "#f5f5f5"
-        header.style.border = "1px solid #ddd"
-        header.style.fontWeight = "bold"
-        header.style.textAlign = "center"
-      }
-    })
-
-    // Style table cells (days)
-    const cells = table.querySelectorAll("td")
-    cells.forEach((cell) => {
-      if (cell instanceof HTMLElement) {
-        cell.style.padding = "8px"
-        cell.style.border = "1px solid #ddd"
-        cell.style.height = "80px"
-        cell.style.verticalAlign = "top"
-        cell.style.textAlign = "right"
-
-        // If the cell has a green background (weekend), preserve it
-        if (
-          cell.classList.contains("weekend") ||
-          window.getComputedStyle(cell).backgroundColor.includes("green") ||
-          cell.querySelector("[style*='background-color: green']")
-        ) {
-          cell.style.backgroundColor = "#e8f5e9"
-        }
-
-        // Remove any "Add Event" text or buttons
-        removeAddEventElements(cell)
-      }
-    })
-  }
-
-  // Function to style a calendar grid
-  const styleCalendarGrid = (grid: HTMLElement) => {
-    grid.style.display = "grid"
-    grid.style.gridTemplateColumns = "repeat(7, 1fr)"
-    grid.style.gap = "4px"
-    grid.style.width = "100%"
-
-    // Style grid cells
-    const cells = grid.querySelectorAll("div")
-    cells.forEach((cell) => {
-      if (cell instanceof HTMLElement) {
-        cell.style.border = "1px solid #ddd"
-        cell.style.padding = "8px"
-        cell.style.minHeight = "80px"
-
-        // If the cell has a green background (weekend), preserve it
-        if (
-          cell.classList.contains("weekend") ||
-          window.getComputedStyle(cell).backgroundColor.includes("green") ||
-          cell.querySelector("[style*='background-color: green']")
-        ) {
-          cell.style.backgroundColor = "#e8f5e9"
-        }
-
-        // Remove any "Add Event" text or buttons
-        removeAddEventElements(cell)
-      }
-    })
-  }
-
-  // Function to clean up the entire calendar
-  const cleanupCalendar = (calendar: HTMLElement) => {
-    // Remove any "Add Event" buttons or prompts
-    removeAddEventElements(calendar)
-
-    // Remove any navigation elements
-    const navElements = calendar.querySelectorAll(".navigation, .nav-buttons, [class*='navigation'], [class*='nav-']")
-    navElements.forEach((el) => el.remove())
-
-    // Style the calendar container
-    calendar.style.width = "100%"
-    calendar.style.fontFamily = "Arial, sans-serif"
-    calendar.style.color = "#333"
-  }
-
-  // Function to remove "Add Event" elements
-  const removeAddEventElements = (element: HTMLElement) => {
-    // Remove elements with "Add Event" text
-    const textNodes = Array.from(element.querySelectorAll("*")).filter(
+    // Remove "Add Event" text and related elements
+    const addEventElements = Array.from(element.querySelectorAll("*")).filter(
       (el) =>
         el.textContent?.includes("Add Event") ||
         el.textContent?.includes("Click") ||
-        el.textContent?.includes("create one"),
+        el.textContent?.includes("create one") ||
+        el.textContent?.includes("No events for this month yet"),
     )
+    addEventElements.forEach((el) => el.remove())
 
-    textNodes.forEach((node) => node.remove())
+    // Apply basic styling to ensure it fits on one page
+    element.style.width = "1100px"
+    element.style.maxWidth = "1100px"
+    element.style.fontSize = "12px"
+    element.style.margin = "0"
+    element.style.padding = "10px"
+    element.style.boxSizing = "border-box"
+    element.style.pageBreakInside = "avoid"
+    element.style.breakInside = "avoid"
 
-    // Remove buttons
-    const buttons = element.querySelectorAll("button, [role='button'], .button, [class*='button']")
-    buttons.forEach((button) => button.remove())
+    // Find all tables and ensure they fit
+    const tables = element.querySelectorAll("table")
+    tables.forEach((table) => {
+      if (table instanceof HTMLElement) {
+        table.style.width = "100%"
+        table.style.tableLayout = "fixed"
+        table.style.borderCollapse = "collapse"
+      }
+    })
 
-    // Remove the specific "No events" message
-    const noEventsMsg = Array.from(element.querySelectorAll("*")).filter((el) =>
-      el.textContent?.includes("No events for this month yet"),
-    )
+    // Find all cells and reduce padding
+    const cells = element.querySelectorAll("td, th")
+    cells.forEach((cell) => {
+      if (cell instanceof HTMLElement) {
+        cell.style.padding = "4px"
+        cell.style.fontSize = "12px"
+      }
+    })
 
-    noEventsMsg.forEach((node) => node.remove())
+    // Log the simplified element for debugging
+    console.log("Simplified calendar for PDF:", element)
   }
 
   // Don't render anything on the server
