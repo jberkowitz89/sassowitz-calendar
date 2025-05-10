@@ -36,35 +36,46 @@ export function PdfExportButton() {
       // Create a clone of the calendar to apply print-specific styles
       const calendarClone = calendarElement.cloneNode(true) as HTMLElement
 
-      // Apply print-specific styles to the clone
-      applyPrintStyles(calendarClone)
+      // Create a temporary container for our optimized calendar
+      const tempContainer = document.createElement("div")
+      tempContainer.style.position = "absolute"
+      tempContainer.style.left = "-9999px"
+      tempContainer.style.top = "-9999px"
+      tempContainer.appendChild(calendarClone)
+      document.body.appendChild(tempContainer)
+
+      // Apply extensive optimizations to the clone
+      optimizeForPdf(calendarClone)
 
       // Configure PDF options for optimal calendar fit
       const opt = {
-        margin: 5, // Use a single number for all margins (in mm)
+        margin: 0, // No margins for maximum space
         filename: `sassowitz-calendar-${new Date().toISOString().split("T")[0]}.pdf`,
-        image: { type: "jpeg", quality: 0.98 },
+        image: { type: "jpeg", quality: 0.95 },
         html2canvas: {
-          scale: 1.5, // Adjust scale for better quality while maintaining fit
+          scale: 1.2, // Lower scale for better fit
           useCORS: true,
           logging: false,
           letterRendering: true,
-          // Set a specific width that works well for most calendars
-          width: 1240,
+          allowTaint: true,
+          foreignObjectRendering: true,
         },
         jsPDF: {
           unit: "mm",
           format: "a4",
           orientation: "landscape" as "landscape" | "portrait",
           compress: true,
-          // Avoid page breaks inside the calendar
           putOnlyUsedFonts: true,
+          precision: 16,
         },
         pagebreak: { mode: "avoid-all" },
       }
 
       // Generate and download the PDF
       await html2pdf().from(calendarClone).set(opt).save()
+
+      // Clean up the temporary container
+      document.body.removeChild(tempContainer)
 
       toast({
         title: "PDF exported successfully",
@@ -82,39 +93,101 @@ export function PdfExportButton() {
     }
   }
 
-  // Function to apply print-specific styles to the calendar clone
-  const applyPrintStyles = (element: HTMLElement) => {
-    // Add a class to the clone for print-specific CSS
+  // Function to extensively optimize the calendar for PDF output
+  const optimizeForPdf = (element: HTMLElement) => {
+    // Add a class for print-specific CSS
     element.classList.add("pdf-export")
 
-    // Find all elements that might cause overflow and adjust them
-    const cells = element.querySelectorAll(".calendar-cell, td, th")
-    cells.forEach((cell) => {
-      if (cell instanceof HTMLElement) {
-        cell.style.padding = "4px"
-        cell.style.fontSize = "12px"
+    // Remove interactive elements that aren't needed in PDF
+    const interactiveElements = element.querySelectorAll(
+      "button, input, select, a[role='button'], [aria-label='Add Event']",
+    )
+    interactiveElements.forEach((el) => {
+      if (el instanceof HTMLElement) {
+        el.remove()
       }
     })
 
-    // Remove any unnecessary elements that take up space
-    const nonEssentialElements = element.querySelectorAll(".non-essential, .hidden-in-print")
-    nonEssentialElements.forEach((el) => el.remove())
+    // Find the month title and make it more prominent
+    const monthTitle = element.querySelector("h1, h2, h3, .month-title")
+    if (monthTitle instanceof HTMLElement) {
+      monthTitle.style.fontSize = "24px"
+      monthTitle.style.fontWeight = "bold"
+      monthTitle.style.marginBottom = "10px"
+      monthTitle.style.textAlign = "center"
+    }
 
-    // Set a fixed width for the calendar to ensure proper scaling
-    element.style.width = "1240px"
+    // Optimize the calendar grid
+    const calendarGrid = element.querySelector("table, .calendar-grid")
+    if (calendarGrid instanceof HTMLElement) {
+      calendarGrid.style.width = "100%"
+      calendarGrid.style.tableLayout = "fixed"
+      calendarGrid.style.borderCollapse = "collapse"
+    }
+
+    // Optimize calendar cells
+    const cells = element.querySelectorAll("td, th, .calendar-cell, .calendar-day")
+    cells.forEach((cell) => {
+      if (cell instanceof HTMLElement) {
+        cell.style.padding = "2px"
+        cell.style.fontSize = "12px"
+        cell.style.border = "1px solid #ddd"
+        cell.style.textAlign = "center"
+        cell.style.height = "auto"
+
+        // If this is a day cell with a number
+        if (cell.textContent && /^\d+$/.test(cell.textContent.trim())) {
+          cell.style.fontWeight = "bold"
+        }
+      }
+    })
+
+    // Optimize event elements
+    const events = element.querySelectorAll(".event, [class*='event']")
+    events.forEach((event) => {
+      if (event instanceof HTMLElement) {
+        event.style.padding = "1px 2px"
+        event.style.margin = "1px 0"
+        event.style.fontSize = "10px"
+        event.style.overflow = "hidden"
+        event.style.textOverflow = "ellipsis"
+        event.style.whiteSpace = "nowrap"
+        event.style.borderRadius = "2px"
+      }
+    })
+
+    // Set overall container styles
+    element.style.fontFamily = "Arial, sans-serif"
+    element.style.width = "100%"
     element.style.maxWidth = "100%"
     element.style.margin = "0"
     element.style.padding = "0"
+    element.style.pageBreakInside = "avoid"
+    element.style.breakInside = "avoid"
 
-    // Ensure text doesn't overflow
-    const textElements = element.querySelectorAll("p, span, div, h1, h2, h3, h4, h5, h6")
-    textElements.forEach((el) => {
+    // Remove any navigation elements
+    const navElements = element.querySelectorAll(".navigation, .nav-buttons, [class*='navigation'], [class*='nav-']")
+    navElements.forEach((el) => {
       if (el instanceof HTMLElement) {
-        el.style.overflow = "hidden"
-        el.style.textOverflow = "ellipsis"
-        el.style.whiteSpace = "nowrap"
+        el.remove()
       }
     })
+
+    // Add a title at the top if none exists
+    if (!monthTitle) {
+      const title = document.createElement("h1")
+      title.textContent = "Calendar"
+      title.style.fontSize = "24px"
+      title.style.fontWeight = "bold"
+      title.style.textAlign = "center"
+      title.style.marginBottom = "10px"
+
+      if (element.firstChild) {
+        element.insertBefore(title, element.firstChild)
+      } else {
+        element.appendChild(title)
+      }
+    }
   }
 
   // Don't render anything on the server
