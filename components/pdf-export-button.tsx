@@ -17,7 +17,7 @@ export function PdfExportButton() {
       const html2pdf = (await import("html2pdf.js")).default
 
       // Get the calendar element - adjust the selector based on your actual calendar container
-      const calendarElement = document.querySelector("#calendar-container")
+      const calendarElement = document.querySelector("#calendar-container") as HTMLElement
 
       if (!calendarElement) {
         throw new Error("Calendar element not found")
@@ -28,7 +28,11 @@ export function PdfExportButton() {
         filename: `sassowitz-calendar-${new Date().toISOString().split("T")[0]}.pdf`,
         image: { type: "jpeg", quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: "mm", format: "a4", orientation: "landscape" },
+        jsPDF: {
+          unit: "mm",
+          format: "a4",
+          orientation: "landscape" as "landscape" | "portrait",
+        },
       }
 
       // Generate and download the PDF
